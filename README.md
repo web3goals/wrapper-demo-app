@@ -1,5 +1,10 @@
 # Web3 Goals Wrapper (Polywrap) Demo Application
 
+## Links
+
+- [Application](https://web3goals-wrapper-demo-app.vercel.app/)
+- [Wrapper](https://github.com/web3goals/wrapper)
+
 ## Commands
 
 - Install dependencies - `npm install`
