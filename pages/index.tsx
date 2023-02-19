@@ -15,6 +15,7 @@ import {
   Typography,
 } from "@mui/material";
 import { PolywrapClient } from "@polywrap/client-js";
+import axios from "axios";
 import Head from "next/head";
 import { useEffect, useState } from "react";
 
@@ -26,17 +27,18 @@ export default function Person() {
   const gitHubUsername = "kiv1n";
   const twitterUsername = "kiv1n";
   const account = "0x4306D7a79265D2cb85Db0c5a55ea5F4f6F73C4B1";
-  const wrapperUri = "ipfs/QmW7niUHBbokFape8LpwySkr4jUPwr7p4YGUX3xZaSiAGE";
+  const wrapperUri = "ipfs/QmTZW8p41F5GPfueFv6brFDEiU7uf21oBKvuZ4LukHfPvc";
   const wrapperSubgraphAuthor = "kiv1n";
   const wrapperSubgraphName = "web3-goals";
   const wrapperGitHubLink = "https://github.com/web3goals/wrapper";
 
   const [accountData, setAccountData] = useState<any>();
+  const [accountGoals, setAccountGoals] = useState<any>();
 
-  async function loadData() {
+  async function loadAccountData() {
     try {
       const client = new PolywrapClient();
-      const accountDataResponse: any = await client.invoke<string>({
+      const response = await client.invoke<string>({
         uri: wrapperUri,
         method: "getAccountData",
         args: {
@@ -45,8 +47,36 @@ export default function Person() {
           account: account,
         },
       });
-      if (accountDataResponse.value) {
-        setAccountData(JSON.parse(accountDataResponse.value).account);
+      if (response.ok) {
+        setAccountData(JSON.parse(response.value).account);
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  async function loadAccountGoals() {
+    try {
+      const client = new PolywrapClient();
+      const response = await client.invoke<string>({
+        uri: wrapperUri,
+        method: "getAccountGoals",
+        args: {
+          subgraphAuthor: wrapperSubgraphAuthor,
+          subgraphName: wrapperSubgraphName,
+          account: account,
+        },
+      });
+      if (response.ok) {
+        const goals = JSON.parse(response.value).goals;
+        for (const goal of goals) {
+          const goalUriData = await axios.get(
+            goal.uri.replace("ipfs://", "https://w3s.link/ipfs/")
+          );
+          goal.title = goalUriData.data.description;
+        }
+        const goalsReversed = goals.reverse();
+        setAccountGoals(goalsReversed);
       }
     } catch (error) {
       console.error(error);
@@ -54,10 +84,9 @@ export default function Person() {
   }
 
   useEffect(() => {
-    loadData();
+    loadAccountData();
+    loadAccountGoals();
   }, []);
-
-  console.log("accountData", accountData);
 
   return (
     <Box>
@@ -143,7 +172,7 @@ export default function Person() {
             {account.substring(account.length - 4)}
           </MuiLink>
         </Stack>
-        {/* Data */}
+        {/* Account data */}
         <Box
           sx={{
             display: "flex",
@@ -168,19 +197,89 @@ export default function Person() {
               Polywrap wrapper
             </MuiLink>
           </Typography>
-          <Box sx={{ mt: 2 }}>
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              mt: 2,
+            }}
+          >
             {accountData ? (
               <>
                 <Typography gutterBottom>
-                  ✅ Achieved goals: {accountData.achievedGoals}
+                  ✅ Achieved goals - {accountData.achievedGoals}
                 </Typography>
                 <Typography gutterBottom>
-                  ❌ Failed goals: {accountData.failedGoals}
+                  ❌ Failed goals - {accountData.failedGoals}
                 </Typography>
                 <Typography gutterBottom>
-                  🧡 Motivated goals: {accountData.motivatedGoals}
+                  🧡 Motivated goals - {accountData.motivatedGoals}
                 </Typography>
               </>
+            ) : (
+              <Typography>Loading...</Typography>
+            )}
+          </Box>
+        </Box>
+        {/* Account goals */}
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            border: "solid",
+            borderColor: "divider",
+            borderWidth: 6,
+            borderRadius: 2,
+            py: 2,
+            px: 4,
+            mt: 6,
+            width: 1,
+          }}
+        >
+          <Typography variant="h6" fontWeight="bold">
+            Web3 Goals Account Goals
+          </Typography>
+          <Typography variant="caption">
+            Data provided by{" "}
+            <MuiLink href={wrapperGitHubLink} target="_blank" underline="none">
+              Polywrap wrapper
+            </MuiLink>
+          </Typography>
+          <Box sx={{ mt: 2 }}>
+            {accountGoals ? (
+              <Stack spacing={2}>
+                {accountGoals.map((goal: any, index: any) => (
+                  <Box
+                    key={index}
+                    sx={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                    }}
+                  >
+                    <MuiLink
+                      href={`https://web3goals.space/goals/${goal.id}`}
+                      target="_blank"
+                      underline="none"
+                    >
+                      {goal.title}
+                    </MuiLink>
+                    <Typography
+                      variant="caption"
+                      textAlign="center"
+                      sx={{ mt: 0.3 }}
+                    >
+                      {goal.isClosed
+                        ? goal.isAchieved
+                          ? "✅ Achieved"
+                          : "❌ Failed"
+                        : "⌛ In Progress"}
+                    </Typography>
+                  </Box>
+                ))}
+              </Stack>
             ) : (
               <Typography>Loading...</Typography>
             )}
